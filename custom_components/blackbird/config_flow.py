@@ -13,7 +13,7 @@ from .controller import Controller
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema({vol.Required("host"): str})
+DATA_SCHEMA = vol.Schema({("host"): str})
 
 
 async def validate_input(hass: HomeAssistant, data: dict) -> Controller:
@@ -31,7 +31,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> Controller:
     controller = Controller(data["host"])
 
     try:
-        await hass.async_add_executor_job(controller.refresh)
+        await controller.refresh()
     except:
         # If there is an error, raise an exception to notify HA that there was a
         # problem. The UI will also show there was a problem
@@ -72,10 +72,10 @@ class BlackbirdConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 controller = await validate_input(self.hass, user_input)
 
-                await self.async_set_unique_id(format_mac(controller.id))
+                await self.async_set_unique_id(format_mac(await controller.id))
                 self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(title=controller.name, data=user_input)
+                return self.async_create_entry(title=await controller.name, data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidHost:

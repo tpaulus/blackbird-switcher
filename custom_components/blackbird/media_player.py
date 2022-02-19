@@ -1,10 +1,11 @@
 from homeassistant.components.media_player import MediaPlayerEntity, MediaPlayerDeviceClass
 from homeassistant.components.media_player.const import MEDIA_TYPE_CHANNEL, SUPPORT_SELECT_SOURCE, SUPPORT_TURN_ON, \
-    SUPPORT_TURN_OFF, SUPPORT_VOLUME_MUTE, SUPPORT_VOLUME_STEP, DOMAIN
+    SUPPORT_TURN_OFF, SUPPORT_VOLUME_MUTE, SUPPORT_VOLUME_STEP
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import DOMAIN
 from .controller import Controller
 
 
@@ -12,16 +13,16 @@ from .controller import Controller
 # hass.config_entries.async_forward_entry_setup call)
 async def async_setup_entry(
         hass: HomeAssistant,
-        config_entry: ConfigEntry,
+        entry: ConfigEntry,
         async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Add media_player for passed config_entry in HA."""
     # The hub is loaded from the associated hass.data entry that was created in the
     # __init__.async_setup_entry function
-    controller = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Add all entities to HA
-    async_add_entities([controller])
+    controller = Controller(entry.data.get("host"))
+    await controller.refresh()
+    async_add_entities([BlackbirdMediaPlayer(controller, controller.id, controller.name)])
 
 
 # noinspection PyAbstractClass
@@ -32,29 +33,56 @@ class BlackbirdMediaPlayer(MediaPlayerEntity):
 
     _attr_should_poll = True
 
-    def __init__(self, controller: Controller) -> None:
+    def __init__(self, controller: Controller, unique_id, name) -> None:
         self._controller = controller
 
-        self._attr_unique_id = self._controller.id
-        self._attr_name = self._controller.name
+        self._attr_unique_id = unique_id
+        self._attr_name = name
+        self._available = True
 
-    def turn_on(self):
-        self._controller.turn_on_display()
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (DOMAIN, self.unique_id)
+            },
+            "name": self.name
+        }
 
-    def turn_off(self):
-        self._controller.turn_off_display()
+    @property
+    def source(self) -> str:
+        return self._controller.current_input
 
-    def mute_volume(self, mute):
-        self._controller.mute_volume()
+    @property
+    def source_list(self) -> list[str]:
+        return self._controller.input_sources
 
-    def volume_up(self):
-        self._controller.increase_volume()
+    @property
+    def state(self) -> str:
+        return self.source
 
-    def volume_down(self):
-        self._controller.decrease_volume()
+    @property
+    def available(self) -> bool:
+        return self._available
 
-    def select_source(self, source):
-        self._controller.set_input(source)
+    async def async_turn_on(self):
+        await self._controller.turn_on_display()
 
-    def update(self):
-        self._controller.refresh()
+    async def async_turn_off(self):
+        await self._controller.turn_off_display()
+
+    async def async_mute_volume(self, mute):
+        await self._controller.mute_volume()
+
+    async def async_volume_up(self):
+        await self._controller.increase_volume()
+
+    async def async_volume_down(self):
+        await self._controller.decrease_volume()
+
+    async def async_select_source(self, source):
+        await self._controller.set_input(source)
+
+    async def async_update(self):
+        await self._controller.refresh()

@@ -10,7 +10,7 @@ PLATFORMS: list[str] = ["media_player"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Hello World from a config entry."""
+    """Set up Blackbird Switcher Media Player from a config entry."""
     # Store an instance of the "connecting" class that does the work of speaking
     # with your actual devices.
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = Controller(entry.data["host"])

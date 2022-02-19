@@ -1,8 +1,9 @@
+import asyncio
 import json
 from collections import OrderedDict
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
-import requests
+import aiohttp
 
 
 class Controller:
@@ -16,58 +17,76 @@ class Controller:
         self._input_to_command: Optional[Dict[str, str]] = None
 
     @property
-    def id(self):
-        if not self._id:
-            self.refresh()
-
+    def id(self) -> Optional[str]:
         return self._id
 
     @property
-    def name(self):
-        if not self._name:
-            self.refresh()
-
+    def name(self) -> Optional[str]:
         return self._name
 
     @property
-    def current_input(self):
+    def current_input(self) -> Optional[str]:
         return self._current_input
 
-    def refresh(self) -> None:
-        response = requests.post(f"http://{self._host}/cgi-bin/MUH44TP_getsetparams.cgi", data="{tag:ptn}")
-        response_json = json.loads(response.text[1:-1].replace("'", "\""))
-
-        self._id = response_json['MacAddr'].replace(" ", "")
-        self._name = response_json['Output8Table']
-
-        self._input_to_command = OrderedDict()
-        self._input_to_command[response_json["Output1Table"]] = "HDMI1"
-        self._input_to_command[response_json["Output2Table"]] = "HDMI2"
-        self._input_to_command[response_json["Output3Table"]] = "HDMI3"
-        self._input_to_command[response_json["Output4Table"]] = "HDMI4"
-
-        self._current_input = self._input_to_command.values()[response_json['Outputbuttom']]
-
-    def set_input(self, input_name: str) -> None:
+    @property
+    def input_sources(self) -> Optional[List[str]]:
         if not self._input_to_command:
-            self.refresh()
+            return None
+        return list(self._input_to_command.keys())
 
-        self.__send_command(self._input_to_command[input_name])
+    async def refresh(self) -> None:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"http://{self._host}/cgi-bin/MUH44TP_getsetparams.cgi",
+                                    data="{tag:ptn}") as response:
+                response_text = await response.text()
+                response_json = json.loads(response_text.strip()[1:-1].replace("'", "\""))
 
-    def turn_on_display(self) -> None:
-        self.__send_command("TVON")
+                self._id = response_json['MacAddr'].replace(" ", "")
+                self._name = response_json['Output8Table']
 
-    def turn_off_display(self) -> None:
-        self.__send_command("TVOFF")
+                self._input_to_command = OrderedDict()
+                self._input_to_command[response_json["Output1Table"]] = "HDMI1"
+                self._input_to_command[response_json["Output2Table"]] = "HDMI2"
+                self._input_to_command[response_json["Output3Table"]] = "HDMI3"
+                self._input_to_command[response_json["Output4Table"]] = "HDMI4"
 
-    def increase_volume(self) -> None:
-        self.__send_command("TVVOL")
+                self._current_input = list(self._input_to_command.keys())[int(response_json['Outputbuttom']) - 1]
 
-    def decrease_volume(self) -> None:
-        self.__send_command("TVVOL-")
+    async def set_input(self, input_name: str) -> None:
+        if not self._input_to_command:
+            await self.refresh()
 
-    def mute_volume(self) -> None:
-        self.__send_command("TVMUTE")
+        await self.__send_command(self._input_to_command[input_name])
 
-    def __send_command(self, command: str):
-        return requests.post(f"http://{self._host}/cgi-bin/MMX32_Keyvalue.cgi", data=f"{{CMD={command}.")
+    async def turn_on_display(self) -> None:
+        await self.__send_command("TVON")
+
+    async def turn_off_display(self) -> None:
+        await self.__send_command("TVOFF")
+
+    async def increase_volume(self) -> None:
+        await self.__send_command("TVVOL")
+
+    async def decrease_volume(self) -> None:
+        await self.__send_command("TVVOL-")
+
+    async def mute_volume(self) -> None:
+        await self.__send_command("TVMUTE")
+
+    async def __send_command(self, command: str):
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"http://{self._host}/cgi-bin/MMX32_Keyvalue.cgi",
+                                    data=f"{{CMD={command}.") as response:
+                return response
+
+
+if __name__ == '__main__':
+    async def main():
+        controller = Controller("192.168.0.220")
+        await controller.refresh()
+        controller_id, controller_name, controller_input = controller.id, controller.name, controller.current_input
+        print(controller_id, controller_name, controller_input)
+
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
