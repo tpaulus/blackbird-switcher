@@ -1,0 +1,6 @@
+{
+  "domain": "blackbird",
+  "name": "Blackbird 4x1 HDMI Switcher",
+  "render_readme": true,
+  "iot_class": "local_polling"
+}

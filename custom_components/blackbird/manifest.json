@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@tpaulus"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/user/my_component/",
+  "domain": "blackbird",
+  "iot_class": "local_polling",
+  "name": "Blackbird 4x1 HDMI Switcher",
+  "requirements": [],
+  "version": "1.0.0"
+}
