@@ -45,10 +45,8 @@ class Controller:
                 self._name = response_json['Output8Table']
 
                 self._input_to_command = OrderedDict()
-                self._input_to_command[response_json["Output1Table"]] = "HDMI1"
-                self._input_to_command[response_json["Output2Table"]] = "HDMI2"
-                self._input_to_command[response_json["Output3Table"]] = "HDMI3"
-                self._input_to_command[response_json["Output4Table"]] = "HDMI4"
+                for i in range(1, 5):
+                    self._input_to_command[response_json[f"Output{i}Table"]] = f"HDMI{i}"
 
                 self._current_input = list(self._input_to_command.keys())[int(response_json['Outputbuttom']) - 1]
 
@@ -82,7 +80,7 @@ class Controller:
 
 if __name__ == '__main__':
     async def main():
-        controller = Controller("192.168.0.220")
+        controller = Controller("192.168.2.238")
         await controller.refresh()
         controller_id, controller_name, controller_input = controller.id, controller.name, controller.current_input
         print(controller_id, controller_name, controller_input)

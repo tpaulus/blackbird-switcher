@@ -38,7 +38,6 @@ class BlackbirdMediaPlayer(MediaPlayerEntity):
 
         self._attr_unique_id = unique_id
         self._attr_name = name
-        self._available = True
 
     @property
     def device_info(self):
@@ -61,10 +60,6 @@ class BlackbirdMediaPlayer(MediaPlayerEntity):
     @property
     def state(self) -> str:
         return self.source
-
-    @property
-    def available(self) -> bool:
-        return self._available
 
     async def async_turn_on(self):
         await self._controller.turn_on_display()
